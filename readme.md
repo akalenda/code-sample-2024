@@ -34,25 +34,29 @@ It assumes you have installed `python3`, `g++`, `nodejs`
 
 Our objective is to build a bidirectional adjacency graph that connects one word to the next:
 
-  hi---hit---hot---hoh---oh
-            / | \
-            /  |  \
-          /   |   \
-        lot--dot--dog
-          \      / |
-            log--<  |
-                  \ |
-                  cog
+```
+  hi---hit---hot---hoh---oh    
+            / | \    
+            /  |  \    
+          /   |   \    
+        lot--dot--dog    
+          \      / |    
+            log--<  |    
+                  \ |    
+                  cog    
+```
 
 As for building it: At first blush I thought, "a trie?"
 
-           ___________|__________
-          /       /      \   \   \
-        h       d        l   c   o
-        / \       \       \   \    \
-      hi  ho     do      lo   co  oh
-      /   / \    /  \    /  \   \
-  hit hoh hot dot dog lot log cog
+```
+           ___________|__________    
+          /       /      \   \   \    
+        h       d        l   c   o    
+        / \       \       \   \    \    
+      hi  ho     do      lo   co  oh    
+      /   / \    /  \    /  \   \    
+  hit hoh hot dot dog lot log cog    
+```
 
 No, this doesn't really help. There's a huge jump between hoh and oh.
 And even if we stuck to the constraint of 3-letter words, which puts them all on
@@ -62,13 +66,15 @@ because the character that needs changing can be smack-dab in the middle of the 
 But what if we had a, ah, pre-or-postfix trie, where the words can be constructed
 starting from any character?
 
-          _________________________________________|_________________________________________________
-          /          /      /                          \                    \          \        \     \
-        _h_         i    __t___             ____________o_____________       d          g        l     c
-      / / \        |   /      \           /      |      |    \   \   \      |          |        |     |
-    oh hi   ho    hi  it     _ot_        ho      do     lo    co  oh  og    do       __og_      lo    co
-    /  /   /  \    |  |     /  | \      / \     / \     / \   |   |   |    /  \     /  |  \     / \   |
-  hoh hit hoh hot hit hit hot dot lot hot hoh dot dog lot log cog hoh dog dot dog log dog cog lot log cog
+```
+          _________________________________________|_________________________________________________    
+          /          /      /                          \                    \          \        \     \    
+        _h_         i    __t___             ____________o_____________       d          g        l     c    
+      / / \        |   /      \           /      |      |    \   \   \      |          |        |     |    
+    oh hi   ho    hi  it     _ot_        ho      do     lo    co  oh  og    do       __og_      lo    co    
+    /  /   /  \    |  |     /  | \      / \     / \     / \   |   |   |    /  \     /  |  \     / \   |    
+  hoh hit hoh hot hit hit hot dot lot hot hoh dot dog lot log cog hoh dog dot dog log dog cog lot log cog    
+```
 
 At first this may look promising, but there is no clear pattern that works in all the edges we would want to
 construct on an adjacency graph. For example, hit and hot are only one character apart, but there are no connections
@@ -79,33 +85,35 @@ Let's consider sample input [hit, hot, hi, hits].
 For each character, it will look to see if it can swap or omit that to find another word.
 On each character edge, it will look to see if it can insert a character to find another word.
 
-hit => *h i t  => hit
-    =>  * i t  => hit
-    =>  h*i t  => hit
-    =>  h * t  => hit, hot
-    =>  h i *  => hit, hi
-    =>  h i t* => hit, hits
-hot => *h o t  => hot
-    =>  * o t  => hot
-    =>  h*o t  => hot
-    =>  h * t  => hot, hit
-    =>  h o*t  => hot
-    =>  h o *  => hot
-    =>  h o t* => hot
-hi => *h i  => hi
-    =>  * i  => hi
-    =>  h*i  => hi
-    =>  h *  => hi
-    =>  h i* => hi, hit
-hits => *h i t s  => hits
-      =>  * i t s  => hits
-      =>  h*i t s  => hits
-      =>  h * t s  => hits
-      =>  h i*t s  => hits
-      =>  h i * s  => hits
-      =>  h i t*s  => hits
-      =>  h i t *  => hits, hit
-      =>  h i t s* => hits
+```
+hit => *h i t  => hit    
+    =>  * i t  => hit    
+    =>  h*i t  => hit    
+    =>  h * t  => hit, hot    
+    =>  h i *  => hit, hi    
+    =>  h i t* => hit, hits    
+hot => *h o t  => hot    
+    =>  * o t  => hot    
+    =>  h*o t  => hot    
+    =>  h * t  => hot, hit    
+    =>  h o*t  => hot    
+    =>  h o *  => hot    
+    =>  h o t* => hot    
+hi => *h i  => hi    
+    =>  * i  => hi    
+    =>  h*i  => hi    
+    =>  h *  => hi    
+    =>  h i* => hi, hit    
+hits => *h i t s  => hits    
+      =>  * i t s  => hits    
+      =>  h*i t s  => hits    
+      =>  h * t s  => hits    
+      =>  h i*t s  => hits    
+      =>  h i * s  => hits    
+      =>  h i t*s  => hits    
+      =>  h i t *  => hits, hit    
+      =>  h i t s* => hits    
+```
 
 Our sample input only has letters added or omitted at the end, but we can see that it would also
 work at the beginning, e.g. [his, this], or in the middle, e.g. [hut, hurt].
@@ -113,14 +121,16 @@ work at the beginning, e.g. [his, this], or in the middle, e.g. [hut, hurt].
 This is excellent. We've got the adjacency list right there, and can either construct a graph from
 it, or use it directly.
 
-  hit > hit hot hi hits
-  hot > hit
-  hi > hit
-  hits > hit
-
-    hit---hot
-      | \
-    hi  hits
+```
+  hit > hit hot hi hits    
+  hot > hit    
+  hi > hit    
+  hits > hit    
+    
+    hit---hot    
+      | \    
+    hi  hits    
+```
 
 We can see some memoization available here. hit and hot both consider h*t, resulting in [hit, hot].
 Essentially, our dict/hashtable would be the middle column (prefix*suffix pairs) and the right
@@ -134,17 +144,17 @@ Once we've got the graph, we can use breadth-first search to find the shortest p
 to move beyond this LeetCode problem and consider what the situation would be like in the wild. Chances
 are, this isn't one-and-done. Chances are that this graph is going to be used multiple times. Therefore,
 consider the following graph:
-
-hi---hit---hot---hoh---oh
-          /  |
-         /   |
-        /    |
-      lot--dot--dog
-         \      / |
-          log--<  |
-                \ |
-                cog
-
+```
+hi---hit---hot---hoh---oh    
+          /  |    
+         /   |    
+        /    |    
+      lot--dot--dog    
+         \      / |    
+          log--<  |    
+                \ |    
+                cog    
+```
 If we complete dot>>oh, we'll have explored a substantial portion of the graph, likely finding
 the shortest paths for dot>>lot, dot>>dog, dot>>log, lot>>hot, dog>>hot, and more. In other words,
 breadth-first search naturally lends itself towards memoization, by creating a minimum spanning tree.
@@ -172,4 +182,5 @@ and C++ (maybe BASH too), so I'll store it on disk.
 
 It could use unit tests. It shouldn't be prone to edge case problems, but there might be some
 issues with really large word sets, stupendously long words, or international characters.
-It also has not been fine-tuned for performance, which was not a goal here.
+It also has not been fine-tuned for performance, which was not a goal here. Documentation
+could definitely use a polish pass.
